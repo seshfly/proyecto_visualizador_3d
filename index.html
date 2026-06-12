@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Visualizador 3D de poemas</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Georgia', 'Times New Roman', serif;
+        }
+        
+        .ui-overlay {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .poem-btn {
+            background: rgba(30, 25, 50, 0.8);
+            border: 1px solid rgba(232, 220, 192, 0.3);
+            padding: 0.6rem 1.2rem;
+            border-radius: 2rem;
+            cursor: pointer;
+            color: #e8dcc0;
+            font-family: monospace;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+        
+        .poem-btn:hover {
+            background: rgba(50, 45, 80, 0.9);
+            transform: translateY(-2px);
+            border-color: #ffd4a8;
+        }
+        
+        .poem-btn.active {
+            background: #4a3a6a;
+            border-color: #ffd4a8;
+            box-shadow: 0 0 15px rgba(255, 212, 168, 0.3);
+        }
+        
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 0.8rem 1.5rem;
+            border-radius: 1rem;
+            border-left: 3px solid #ffd4a8;
+            color: #e8dcc0;
+            font-family: monospace;
+            font-size: 0.7rem;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .title-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem 1.2rem;
+            border-radius: 1rem;
+            color: #ffd4a8;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .instruction {
+            position: fixed;
+            bottom: 80px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 0.3rem 0.8rem;
+            border-radius: 0.5rem;
+            color: #a09070;
+            font-size: 0.6rem;
+            font-family: monospace;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .poem-display {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 650px;
+            max-height: 70vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(20px);
+            border-radius: 2rem;
+            padding: 2rem;
+            color: #e8dcc0;
+            text-align: center;
+            z-index: 200;
+            border: 1px solid rgba(255, 212, 168, 0.4);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            animation: fadeInUp 0.4s ease;
+            overflow-y: auto;
+            pointer-events: auto;
+        }
+        
+        .poem-display::-webkit-scrollbar {
+            width: 6px;
+        }
+        .poem-display::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        .poem-display::-webkit-scrollbar-thumb {
+            background: #ffd4a8;
+            border-radius: 3px;
+        }
+        
+        .poem-display-title {
+            font-size: 1.8rem;
+            font-family: 'Courier New', monospace;
+            color: #ffd4a8;
+            margin-bottom: 1.5rem;
+            letter-spacing: 2px;
+            border-bottom: 1px solid rgba(255, 212, 168, 0.3);
+            display: inline-block;
+            padding-bottom: 0.5rem;
+        }
+        
+        .poem-display-text {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            text-align: center;
+            white-space: pre-line;
+            font-style: italic;
+            max-height: 50vh;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+        
+        .close-poem {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #a09070;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: monospace;
+        }
+        
+        .close-poem:hover {
+            color: #ffd4a8;
+            transform: scale(1.1);
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -40%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+        
+        @media (max-width: 700px) {
+            .poem-btn { padding: 0.4rem 0.8rem; font-size: 0.7rem; }
+            .info-panel { font-size: 0.5rem; }
+            .title-panel { font-size: 0.7rem; }
+            .poem-display-title { font-size: 1.3rem; }
+            .poem-display-text { font-size: 0.9rem; }
+            .poem-display { padding: 1.2rem; width: 90%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="title-panel" id="titlePanel">
+        Visualizador 3D de poemas
+    </div>
+    
+    <div class="info-panel">
+        Click + arrastrar: rotar | Scroll: zoom
+    </div>
+    
+    <div class="ui-overlay">
+        <button class="poem-btn active" data-poem="neruda">Pablo Neruda</button>
+        <button class="poem-btn" data-poem="mistral">Gabriela Mistral</button>
+        <button class="poem-btn" data-poem="benedetti">Mario Benedetti</button>
+        <button class="poem-btn" data-poem="cortazar">Julio Cortázar</button>
+        <button class="poem-btn" data-poem="sabines">Jaime Sabines</button>
+    </div>
+    
+    <div class="instruction">
+        Poemas flotando en el espacio 3D | Haz clic en un poeta para ver su poema completo
+    </div>
+
+    <div id="poemDisplay" class="poem-display" style="display: none;">
+        <button class="close-poem" id="closePoemBtn">✕</button>
+        <div class="poem-display-title" id="poemDisplayTitle">Pablo Neruda</div>
+        <div class="poem-display-text" id="poemDisplayText"></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        const poems = {
+            neruda: {
+                title: "Pablo Neruda",
+                fullPoem: `Puedo escribir los versos más tristes esta noche.
+Escribir, por ejemplo: 'La noche está estrellada,
+y tiritan, azules, los astros, a lo lejos'.
+
+El viento de la noche gira en el cielo y canta.
+Puedo escribir los versos más tristes esta noche.
+Yo la quise, y a veces ella también me quiso.
+
+En las noches como ésta la tuve entre mis brazos.
+La besé tantas veces bajo el cielo infinito.
+Ella me quiso, a veces yo también la quería.
+
+Cómo no haber amado sus grandes ojos fijos.
+Puedo escribir los versos más tristes esta noche.
+Pensar que no la tengo. Sentir que la he perdido.
+
+Oír la noche inmensa, más inmensa sin ella.
+Y el verso cae al alma como al pasto el rocío.
+Qué importa que mi amor no pudiera guardarla.
+
+La noche está estrellada y ella no está conmigo.
+Eso es todo. A lo lejos alguien canta. A lo lejos.
+Mi alma no se contenta con haberla perdido.`,
+                faces: [
+                    { side: "front", text: "Puedo escribir los versos más tristes esta noche.\nEscribir, por ejemplo: 'La noche está estrellada,\ny tiritan, azules, los astros, a lo lejos'." },
+                    { side: "back", text: "El viento de la noche gira en el cielo y canta.\nPuedo escribir los versos más tristes esta noche.\nYo la quise, y a veces ella también me quiso." },
+                    { side: "left", text: "En las noches como ésta la tuve entre mis brazos.\nLa besé tantas veces bajo el cielo infinito.\nElla me quiso, a veces yo también la quería." },
+                    { side: "right", text: "Cómo no haber amado sus grandes ojos fijos.\nPuedo escribir los versos más tristes esta noche.\nPensar que no la tengo. Sentir que la he perdido." },
+                    { side: "top", text: "Oír la noche inmensa, más inmensa sin ella.\nY el verso cae al alma como al pasto el rocío.\nQué importa que mi amor no pudiera guardarla." },
+                    { side: "bottom", text: "La noche está estrellada y ella no está conmigo.\nEso es todo. A lo lejos alguien canta. A lo lejos.\nMi alma no se contenta con haberla perdido." }
+                ]
+            },
+            mistral: {
+                title: "Gabriela Mistral",
+                fullPoem: `Yo no tengo soledad,
+que la noche es una hermana,
+que el lucero es una amiga,
+y la luna es una hermana mayor.
+
+Todas íbamos a ser reinas,
+de cuatro reinos sobre el mar:
+Rosa, de rosa, Constanza,
+de constelaciones, Lucía,
+de prodigios...
+
+El alma que anda en busca del amor,
+se desgarra como una vela
+en la tormenta.
+Pero luego encuentra su luz.
+
+Me gustas cuando callas porque estás como ausente.
+Me oyes desde lejos, y mi voz no te toca.
+Parece que los ojos se te hubieran volado.
+
+Besaba yo la tierra que pisabas,
+miraba tus cabellos como un árbol,
+tus manos como pájaros dormidos,
+tus ojos como un cielo sin estrellas.
+
+Ríe, ríe, que el reír es tan sano.
+Ríe como ríe el agua en la mañana,
+como ríe el trigo en la era,
+como ríe la luz en la ventana.`,
+                faces: [
+                    { side: "front", text: "Yo no tengo soledad,\nque la noche es una hermana,\nque el lucero es una amiga,\ny la luna es una hermana mayor." },
+                    { side: "back", text: "Todas íbamos a ser reinas,\nde cuatro reinos sobre el mar:\nRosa, de rosa, Constanza,\nde constelaciones, Lucía,\nde prodigios..." },
+                    { side: "left", text: "El alma que anda en busca del amor,\nse desgarra como una vela\nen la tormenta.\nPero luego encuentra su luz." },
+                    { side: "right", text: "Me gustas cuando callas porque estás como ausente.\nMe oyes desde lejos, y mi voz no te toca.\nParece que los ojos se te hubieran volado." },
+                    { side: "top", text: "Besaba yo la tierra que pisabas,\nmiraba tus cabellos como un árbol,\ntus manos como pájaros dormidos,\ntus ojos como un cielo sin estrellas." },
+                    { side: "bottom", text: "Ríe, ríe, que el reír es tan sano.\nRíe como ríe el agua en la mañana,\ncomo ríe el trigo en la era,\ncomo ríe la luz en la ventana." }
+                ]
+            },
+            benedetti: {
+                title: "Mario Benedetti",
+                fullPoem: `No te rindas, aún estás a tiempo
+de alcanzar y comenzar de nuevo,
+aceptar tus sombras,
+enterrar tus miedos,
+liberar el lastre,
+retomar el vuelo.
+
+No te rindas que la vida es eso,
+continuar el viaje,
+perseguir tus sueños,
+destrabar el tiempo,
+correr los escombros
+y destapar el cielo.
+
+Pero si tú me dices 'te amo',
+entonces ya no habrá nadie más,
+entonces ya no existirá nadie más,
+entonces el mundo será sólo nuestro.
+
+Te quiero porque te quiero,
+no porque seas mía,
+no porque vivas conmigo,
+porque el amor no tiene banderas.
+
+La ternura es eso,
+una mano que se abre,
+un calor que se da,
+un silencio que se entiende.
+
+Es la felicidad eso:
+saber que el dolor no es eterno,
+que el encuentro es posible,
+que la noche da paso al día.`,
+                faces: [
+                    { side: "front", text: "No te rindas, aún estás a tiempo\nde alcanzar y comenzar de nuevo,\nacpetar tus sombras,\nenterrar tus miedos,\nliberar el lastre,\nretomar el vuelo." },
+                    { side: "back", text: "No te rindas que la vida es eso,\ncontinuar el viaje,\nperseguir tus sueños,\ndestrabar el tiempo,\ncorrer los escombros\ny destapar el cielo." },
+                    { side: "left", text: "Pero si tú me dices 'te amo',\nentonces ya no habrá nadie más,\nentonces ya no existirá nadie más,\nentonces el mundo será sólo nuestro." },
+                    { side: "right", text: "Te quiero porque te quiero,\nno porque seas mía,\nno porque vivas conmigo,\nporque el amor no tiene banderas." },
+                    { side: "top", text: "La ternura es eso,\nuna mano que se abre,\nun calor que se da,\nun silencio que se entiende." },
+                    { side: "bottom", text: "Es la felicidad eso:\nsaber que el dolor no es eterno,\nque el encuentro es posible,\nque la noche da paso al día." }
+                ]
+            },
+            cortazar: {
+                title: "Julio Cortázar",
+                fullPoem: `Andábamos sin buscarnos,
+pero sabiendo que andábamos
+para encontrarnos.
+
+Creo que el amor es como una especie de manía colectiva,
+como una fiebre,
+como un juego que nadie sabe bien las reglas.
+
+Tocaba el piano porque le gustaba,
+porque el piano era como una lluvia transparente
+que le caía sobre los hombros.
+
+El cronopio es ese que busca el amor
+y que cuando lo encuentra
+no sabe muy bien qué hacer,
+pero lo disfruta.
+
+Y entre los dos hicieron una luz
+tan llena que parecía
+que la sombra ya no existía.
+
+La vida, como las historias,
+solo importa cuando termina.
+Pero mientras tanto,
+hay que vivirla.`,
+                faces: [
+                    { side: "front", text: "Andábamos sin buscarnos,\npero sabiendo que andábamos\npara encontrarnos." },
+                    { side: "back", text: "Creo que el amor es como una especie de manía colectiva,\ncomo una fiebre,\ncomo un juego que nadie sabe bien las reglas." },
+                    { side: "left", text: "Tocaba el piano porque le gustaba,\nporque el piano era como una lluvia transparente\nque le caía sobre los hombros." },
+                    { side: "right", text: "El cronopio es ese que busca el amor\ny que cuando lo encuentra\nno sabe muy bien qué hacer,\npero lo disfruta." },
+                    { side: "top", text: "Y entre los dos hicieron una luz\ntan llena que parecía\nque la sombra ya no existía." },
+                    { side: "bottom", text: "La vida, como las historias,\nsolo importa cuando termina.\nPero mientras tanto,\nhay que vivirla." }
+                ]
+            },
+            sabines: {
+                title: "Jaime Sabines",
+                fullPoem: `El amor es un desorden de besos,
+un caos de caricias,
+una confusión de cuerpos.
+
+Te quiero porque sí,
+porque lo digo y no lo sé explicar,
+porque cuando te miro
+el mundo se detiene.
+
+El tiempo pasa y uno se da cuenta
+que lo importante no es lo que tienes,
+sino a quién tienes.
+
+A veces me pregunto si el amor
+es esta necesidad de estar juntos
+o esta necesidad de estar solos.
+
+La noche me gusta porque te tengo,
+porque en la noche te sueño,
+porque en la noche eres mía.
+
+Morir de amor es no morir,
+es quedarse en la vida
+como un árbol sin hojas.`,
+                faces: [
+                    { side: "front", text: "El amor es un desorden de besos,\nun caos de caricias,\nuna confusión de cuerpos." },
+                    { side: "back", text: "Te quiero porque sí,\nporque lo digo y no lo sé explicar,\nporque cuando te miro\nel mundo se detiene." },
+                    { side: "left", text: "El tiempo pasa y uno se da cuenta\nque lo importante no es lo que tienes,\nsino a quién tienes." },
+                    { side: "right", text: "A veces me pregunto si el amor\nes esta necesidad de estar juntos\no esta necesidad de estar solos." },
+                    { side: "top", text: "La noche me gusta porque te tengo,\nporque en la noche te sueño,\nporque en la noche eres mía." },
+                    { side: "bottom", text: "Morir de amor es no morir,\nes quedarse en la vida\ncomo un árbol sin hojas." }
+                ]
+            }
+        };
+        
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510);
+        scene.fog = new THREE.FogExp2(0x050510, 0.008);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(3, 2, 5);
+        camera.lookAt(0, 0, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+        
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+        
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.5;
+        controls.enableZoom = true;
+        controls.enablePan = true;
+        controls.zoomSpeed = 1.2;
+        controls.rotateSpeed = 1.0;
+        
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+        
+        const mainLight = new THREE.DirectionalLight(0xfff5e6, 1);
+        mainLight.position.set(2, 3, 4);
+        mainLight.castShadow = true;
+        scene.add(mainLight);
+        
+        const fillLight = new THREE.PointLight(0xffaa66, 0.5);
+        fillLight.position.set(1, 2, 2);
+        scene.add(fillLight);
+        
+        const backLight = new THREE.PointLight(0x6688ff, 0.3);
+        backLight.position.set(-2, 1, -3);
+        scene.add(backLight);
+        
+        const flickerLight = new THREE.PointLight(0xff88aa, 0.4);
+        flickerLight.position.set(1, 1, 1);
+        scene.add(flickerLight);
+        
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 1500;
+        const starPositions = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount; i++) {
+            starPositions[i * 3] = (Math.random() - 0.5) * 200;
+            starPositions[i * 3 + 1] = (Math.random() - 0.5) * 100;
+            starPositions[i * 3 + 2] = (Math.random() - 0.5) * 80 - 40;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, transparent: true, opacity: 0.6 });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+        
+        const particleCount = 800;
+        const particleGeometry = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        const particleColors = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount; i++) {
+            const radius = 1.8 + Math.random() * 0.8;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            particlePositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+            particlePositions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+            particlePositions[i * 3 + 2] = radius * Math.cos(phi);
+            
+            // Colores: dorado, rosa, azul
+            const colorChoice = Math.random();
+            if (colorChoice < 0.33) {
+                particleColors[i * 3] = 1.0;
+                particleColors[i * 3 + 1] = 0.8;
+                particleColors[i * 3 + 2] = 0.4;
+            } else if (colorChoice < 0.66) {
+                particleColors[i * 3] = 1.0;
+                particleColors[i * 3 + 1] = 0.5;
+                particleColors[i * 3 + 2] = 0.7;
+            } else {
+                particleColors[i * 3] = 0.4;
+                particleColors[i * 3 + 1] = 0.6;
+                particleColors[i * 3 + 2] = 1.0;
+            }
+        }
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        particleGeometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+        const particleMaterial = new THREE.PointsMaterial({ size: 0.03, vertexColors: true, transparent: true, opacity: 0.7 });
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particles);
+        
+        const ringParticleCount = 300;
+        const ringGeometry = new THREE.BufferGeometry();
+        const ringPositions = new Float32Array(ringParticleCount * 3);
+        for (let i = 0; i < ringParticleCount; i++) {
+            const angle = (i / ringParticleCount) * Math.PI * 2;
+            const radius = 1.6;
+            ringPositions[i * 3] = Math.cos(angle) * radius;
+            ringPositions[i * 3 + 1] = Math.sin(angle) * radius * 0.5;
+            ringPositions[i * 3 + 2] = Math.sin(angle) * radius * 0.7;
+        }
+        ringGeometry.setAttribute('position', new THREE.BufferAttribute(ringPositions, 3));
+        const ringMaterial = new THREE.PointsMaterial({ color: 0xffaa66, size: 0.04 });
+        const ringParticles = new THREE.Points(ringGeometry, ringMaterial);
+        scene.add(ringParticles);
+        
+        const cubeSize = 1.4;
+        const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+        const cubeMaterial = new THREE.MeshStandardMaterial({
+            color: 0x3a2a6a,
+            emissive: 0x1a0a3a,
+            metalness: 0.7,
+            roughness: 0.3,
+            transparent: true,
+            opacity: 0.25,
+            side: THREE.DoubleSide
+        });
+        const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        cube.castShadow = true;
+        cube.receiveShadow = false;
+        scene.add(cube);
+        
+        const edgesGeo = new THREE.EdgesGeometry(cubeGeometry);
+        const edgesMat = new THREE.LineBasicMaterial({ color: 0xffd4a8, linewidth: 1 });
+        const wireframe = new THREE.LineSegments(edgesGeo, edgesMat);
+        scene.add(wireframe);
+        
+        let currentTexts = [];
+        
+        function createTextPanel(text, side) {
+            const div = document.createElement('div');
+            div.style.backgroundColor = 'rgba(0, 0, 0, 0.75)';
+            div.style.color = '#e8dcc0';
+            div.style.fontFamily = 'Georgia, serif';
+            div.style.fontSize = '12px';
+            div.style.fontWeight = 'normal';
+            div.style.textAlign = 'center';
+            div.style.padding = '15px';
+            div.style.borderRadius = '8px';
+            div.style.border = '1px solid rgba(255, 212, 168, 0.3)';
+            div.style.backdropFilter = 'blur(5px)';
+            div.style.width = '220px';
+            div.style.height = '180px';
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.justifyContent = 'center';
+            div.style.lineHeight = '1.4';
+            div.style.whiteSpace = 'pre-line';
+            div.style.fontStyle = 'italic';
+            div.style.boxShadow = '0 0 20px rgba(0,0,0,0.5)';
+            div.textContent = text;
+            
+            const label = new CSS2DObject(div);
+            
+            const offset = cubeSize / 2 + 0.05;
+            switch(side) {
+                case 'front': label.position.set(0, 0, offset); break;
+                case 'back': label.position.set(0, 0, -offset); break;
+                case 'left': label.position.set(-offset, 0, 0); break;
+                case 'right': label.position.set(offset, 0, 0); break;
+                case 'top': label.position.set(0, offset, 0); break;
+                case 'bottom': label.position.set(0, -offset, 0); break;
+            }
+            return label;
+        }
+        
+        function loadPoem(poemKey) {
+            currentTexts.forEach(text => {
+                scene.remove(text);
+            });
+            currentTexts = [];
+            
+            const poem = poems[poemKey];
+            if (!poem) return;
+            
+            document.getElementById('titlePanel').innerHTML = `${poem.title}`;
+            
+            poem.faces.forEach(face => {
+                const textObj = createTextPanel(face.text, face.side);
+                currentTexts.push(textObj);
+                scene.add(textObj);
+            });
+            
+            ringParticles.material.color.setHex(0xffaa66);
+            setTimeout(() => {
+                ringParticles.material.color.setHex(0xffaa66);
+            }, 300);
+        }
+        
+        const poemDisplay = document.getElementById('poemDisplay');
+        const poemDisplayTitle = document.getElementById('poemDisplayTitle');
+        const poemDisplayText = document.getElementById('poemDisplayText');
+        const closePoemBtn = document.getElementById('closePoemBtn');
+        
+        function showPoemInLarge(poemKey) {
+            const poem = poems[poemKey];
+            if (!poem) return;
+            
+            poemDisplayTitle.textContent = poem.title;
+            poemDisplayText.textContent = poem.fullPoem;
+            poemDisplay.style.display = 'block';
+            
+            controls.autoRotate = false;
+            setTimeout(() => {
+                controls.autoRotate = true;
+            }, 3000);
+        }
+        
+        function hidePoemDisplay() {
+            poemDisplay.style.display = 'none';
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hidePoemDisplay();
+            }
+        });
+        
+        closePoemBtn.addEventListener('click', hidePoemDisplay);
+        
+        let time = 0;
+        
+        function animateLight() {
+            time += 0.02;
+            const intensity = 0.3 + Math.sin(time * 3) * 0.15;
+            flickerLight.intensity = intensity;
+            
+            ringParticles.rotation.y = time * 0.5;
+            ringParticles.rotation.x = Math.sin(time * 0.3) * 0.2;
+            
+            stars.rotation.y += 0.0005;
+            stars.rotation.x += 0.0003;
+            
+            particles.rotation.y = Math.sin(time * 0.2) * 0.1;
+            particles.rotation.x = Math.cos(time * 0.3) * 0.1;
+        }
+        
+        document.querySelectorAll('.poem-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.poem-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const poemKey = btn.getAttribute('data-poem');
+                loadPoem(poemKey);
+                showPoemInLarge(poemKey);  
+
+                controls.autoRotate = true;
+                setTimeout(() => {
+                    controls.autoRotate = true;
+                }, 100);
+            });
+        });
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            animateLight();
+            controls.update();
+            
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        
+
+        function init() {
+            loadPoem('neruda');
+            
+            window.addEventListener('resize', onWindowResize, false);
+            function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            animate();
+        }
+        
+        init();
+    </script>
+</body>
+</html>
